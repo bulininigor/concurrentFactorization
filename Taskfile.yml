@@ -1,0 +1,91 @@
+version: "3"
+
+vars:
+  GOBIN: '{{.ROOT_DIR}}/bin'
+  GOLANGCI_LINT_VERSION: 'v1.64.5'
+
+tasks:
+  test:
+    desc: "Run all tests"
+    cmds:
+      - go test -tags=model_test -v -race ./...
+      - go test -tags=performance_test -count=2 -v ./...
+
+  update:
+    desc: "Update tests"
+    cmds:
+      - go run .github/update.go
+      - go mod tidy
+
+  force-update:
+    desc: "Force update tests"
+    aliases: [ "force_update", "fu" ]
+    cmds:
+      - go run .github/update.go -force
+      - go mod tidy
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - |
+        if [ "${OS:-}" = "Windows_NT" ]; then
+          LINT="{{.GOBIN}}/golangci-lint.exe"
+        
+          if [ ! -f "$LINT" ]; then
+            echo "golangci-lint not found. Installing..."
+            mkdir -p {{.GOBIN}}
+            GOBIN={{.GOBIN}} go install github.com/golangci/golangci-lint/cmd/golangci-lint@{{.GOLANGCI_LINT_VERSION}}
+          fi
+        
+          echo "Running golangci-lint..."
+          "$LINT" run --config=.golangci.yaml --sort-results
+        else 
+          if [ ! -x "{{.GOBIN}}/golangci-lint" ]; then
+            echo "golangci-lint not found. Installing..."
+            mkdir -p {{.GOBIN}}
+            GOBIN={{.GOBIN}} go install github.com/golangci/golangci-lint/cmd/golangci-lint@{{.GOLANGCI_LINT_VERSION}}
+          fi
+        
+          echo "Running golangci-lint..."
+          {{.GOBIN}}/golangci-lint run --config=.golangci.yaml --sort-results
+        fi
+
+  repo-update:
+    silent: true
+    cmds:
+      - |
+        set -euo pipefail
+
+        if [ -n "$(git status --untracked-files=no --porcelain)" ]; then
+          echo 'You have some changes. Please commit, checkout or stash them.'
+          exit 1
+        fi
+
+        current_branch="$(git branch --show-current)"
+        echo "Current branch: $current_branch"
+
+        git checkout main
+        git pull
+
+        for branch in $(git for-each-ref --format='%(refname:short)' refs/heads/); do
+          git checkout "$branch"
+
+          if ! git rev-parse --symbolic-full-name @{u} >/dev/null 2>&1; then
+            if git ls-remote --heads origin "$branch" | grep -q .; then
+              echo "Upstream exists for $branch. Setting upstream to origin/$branch."
+              git branch --set-upstream-to="origin/$branch"
+            else
+              echo "Upstream not found for $branch. Pushing and setting upstream to origin/$branch."
+              git push --set-upstream origin "$branch"
+              git branch --set-upstream-to="origin/$branch"
+            fi
+          fi
+
+          git pull --rebase
+          git push -f
+          git rebase main
+          git push -f
+        done
+
+        git checkout "$current_branch"
+        echo 'Successfully updated'

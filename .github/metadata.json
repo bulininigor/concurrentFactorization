@@ -1,0 +1,27 @@
+{
+  "repo": "igoroutine-courses/gonature.factorization_tests",
+  "ref": "main",
+  "version_path": "version.txt",
+  "files": [
+    {
+      "from": "tests/model_test.go",
+      "to": "internal/fact/model_test.go"
+    },
+    {
+      "from": "tests/performance_test.go",
+      "to": "internal/fact/performance_test.go"
+    },
+    {
+      "from": "tests/util_test.go",
+      "to": "internal/fact/util_test.go"
+    },
+    {
+      "from": "README.md",
+      "to": "README.md"
+    },
+    {
+      "from": ".golangci.yaml",
+      "to": ".golangci.yaml"
+    }
+  ]
+}

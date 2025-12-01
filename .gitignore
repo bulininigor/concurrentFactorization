@@ -1,0 +1,11 @@
+.idea
+*_test.go
+*.txt
+/bin
+/generated
+/cover.out
+/cover.out.tmp
+.env
+README.md
+.golangci.yaml
+.DS_Store
